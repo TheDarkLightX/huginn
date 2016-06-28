@@ -77,6 +77,9 @@ module Agents
             "author": "...",
             "authors": [ "..." ],
             "categories": [ "..." ],
+            "enclosure": {
+              "url" => "http://example.com/file.mp3", "type" => "audio/mpeg", "length" => "123456789"
+            },
             "date_published": "2014-09-11 01:30:00 -0700",
             "last_updated": "Thu, 11 Sep 2014 01:30:00 -0700"
           }
@@ -151,6 +154,7 @@ module Agents
     end
 
     LINK_ATTRS = %i[href rel type hreflang title length]
+    ENCLOSURE_ATTRS = %i[url type length]
 
     unless dependencies_missing?
       class AtomAuthor
@@ -159,6 +163,22 @@ module Agents
         element :name
         element :email
         element :uri
+      end
+
+      class Enclosure
+        include SAXMachine
+
+        ENCLOSURE_ATTRS.each do |attr|
+          attribute attr
+        end
+
+        def to_json(options = nil)
+          ENCLOSURE_ATTRS.each_with_object({}) { |key, hash|
+            if value = __send__(key)
+              hash[key] = value
+            end
+          }.to_json(options)
+        end
       end
 
       class AtomLink
@@ -186,6 +206,27 @@ module Agents
           {
             href: href
           }.to_json(options)
+        end
+      end
+
+      module HasEnclosure
+        def self.included(mod)
+          mod.module_exec do
+            sax_config.top_level_elements['enclosure'].clear
+
+            element :enclosure, class: Enclosure
+
+            def image_enclosure
+              case enclosure.try!(:type)
+              when %r{\Aimage/}
+                enclosure
+              end
+            end
+
+            def image
+              @image ||= image_enclosure.try!(:href)
+            end
+          end
         end
       end
 
@@ -231,6 +272,7 @@ module Agents
       module FeedEntryExtensions
         def self.included(mod)
           mod.module_exec do
+            include HasEnclosure
             include HasLinks
           end
         end
@@ -239,6 +281,7 @@ module Agents
       module FeedExtensions
         def self.included(mod)
           mod.module_exec do
+            include HasEnclosure
             include HasLinks
 
             element  :id, as: :feed_id
@@ -317,6 +360,7 @@ module Agents
         description: description,
         content: content,
         image: entry.try(:image),
+        enclosure: entry.enclosure,
         author: author,
         authors: Array(author),
         categories: Array(entry.try(:categories)),

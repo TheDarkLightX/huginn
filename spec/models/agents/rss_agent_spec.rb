@@ -216,6 +216,12 @@ describe Agents::RssAgent do
       expect(first.payload['categories']).to eq(["csv", "crossplatform", "utilities"])
       expect(third.payload['categories']).to eq(["web"])
     end
+
+    it "captures an enclosure" do
+      agent.check
+      first = agent.events.first
+      expect(first.payload['enclosure']).to eq({ "url" => "http://example.com/file.mp3", "type" => "audio/mpeg", "length" => "123456789" })
+    end
   end
 
   describe 'logging errors with the feed url' do

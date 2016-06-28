@@ -15,6 +15,7 @@
             <category>csv</category>
             <category>crossplatform</category>
             <category>utilities</category>
+            <enclosure url="http://example.com/file.mp3" length="123456789" type="audio/mpeg" />
         </item>
         <item>
             <title>Gemini</title>
